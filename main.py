@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 import customtkinter as ctk
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw
 from database import initialize_database, close_database
 from functions import add_reservation, delete_reservation, export_csv
 
@@ -26,21 +26,39 @@ for i in range(4):
     frame.grid_columnconfigure(i, weight=1)
 
 # Path ke file gambar logo hotel
-logo_path = "images/hotel.png"
+logo_path = "images/hotel-1.png"
 
-# Buat frame untuk gambar
-image_frame = ctk.CTkFrame(frame, width=150, height=150)
-image_frame.grid(row=0, column=3, rowspan=2, padx=10, pady=10)
+# Buat fungsi untuk membuat gambar menjadi lingkaran
+def create_circle_image(image_path, size):
+    try:
+        # Load image and resize
+        logo_image = Image.open(image_path)
+        logo_image = logo_image.resize((size, size))
 
-# Muat gambar menggunakan PIL
-logo_image = Image.open(logo_path)
-logo_image = logo_image.resize((150, 150), Image.ANTIALIAS)
-logo_image = ImageTk.PhotoImage(logo_image)
+        # Create an image with alpha channel (RGBA)
+        circle_image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
 
-# Tampilkan gambar di frame
-logo_label = tk.Label(image_frame, image=logo_image)
-logo_label.pack()
+        # Create a mask to define the shape of the circle
+        mask = Image.new('L', (size, size), 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0, size, size), fill=255)
 
+        # Paste the resized image onto the circle image using the mask
+        circle_image.paste(logo_image, (0, 0), mask)
+
+        return ImageTk.PhotoImage(circle_image)
+
+    except FileNotFoundError:
+        messagebox.showerror("Error", f"Logo image not found at {image_path}.")
+        return None
+
+# Muat dan tampilkan gambar dalam bentuk lingkaran
+logo_image = create_circle_image(logo_path, 70)
+
+if logo_image:
+    logo_label = tk.Label(frame, image=logo_image)
+    logo_label.image = logo_image  # Simpan referensi agar gambar tetap ditampilkan
+    logo_label.grid(row=0, column=3, rowspan=2, padx=10, pady=10, sticky='nsew')
 
 label_guest_name = ctk.CTkLabel(frame, text='Guest Name:')
 label_guest_name.grid(row=0, column=0, sticky=tk.W, pady=5, padx=10)
