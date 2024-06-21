@@ -1,11 +1,11 @@
-from tkinter import messagebox, ttk
-import tkinter as tk
+from tkinter import messagebox
 import csv
 
 # Fungsi untuk menambahkan reservasi
-def add_reservation(cursor, conn, guest_name, room_number, check_in_date, check_out_date):
-    cursor.execute('INSERT INTO reservations (guest_name, room_number, check_in_date, check_out_date) VALUES (?, ?, ?, ?)', 
-                   (guest_name, int(room_number), check_in_date, check_out_date))
+def add_reservation(cursor, conn, guest_name, room_number, check_in_date, check_out_date, price):
+    cursor.execute('''INSERT INTO reservations (guest_name, room_number, check_in_date, check_out_date, price)
+                      VALUES (?, ?, ?, ?, ?)''', 
+                   (guest_name, int(room_number), check_in_date, check_out_date, int(price)))
     conn.commit()
     messagebox.showinfo('Success', 'Reservation added successfully')
 
@@ -25,7 +25,7 @@ def export_csv(cursor, file_path):
     
     with open(file_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['ID', 'Guest Name', 'Room Number', 'Check-in Date', 'Check-out Date'])
+        writer.writerow(['ID', 'Guest Name', 'Room Number', 'Check-in Date', 'Check-out Date', 'Price'])
         for row in rows:
             writer.writerow(row)
     
