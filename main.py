@@ -4,15 +4,14 @@ from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 import customtkinter as ctk
 from PIL import Image, ImageTk, ImageDraw
-from database import initialize_database, close_database
-from functions import add_reservation, delete_reservation, export_csv
+from functions import initialize_database, close_database, add_reservation_clicked, delete_reservation_clicked, export_csv_clicked, display_reservations, search_reservation, create_circle_image
 
 # Inisialisasi koneksi database
 conn, cursor = initialize_database()
 
 # GUI menggunakan customtkinter
-ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light")
-ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue")
+ctk.set_appearance_mode("System")
+ctk.set_default_color_theme("blue")
 
 root = ctk.CTk()
 root.title('Hotel Reservations')
@@ -21,43 +20,15 @@ root.geometry('900x600')
 frame = ctk.CTkFrame(root, width=850, height=550, corner_radius=15)
 frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-# Adjust column configurations for better alignment
 for i in range(4):
     frame.grid_columnconfigure(i, weight=1)
 
-# Path ke file gambar logo hotel
 logo_path = "images/hotel-1.png"
-
-# Buat fungsi untuk membuat gambar menjadi lingkaran
-def create_circle_image(image_path, size):
-    try:
-        # Load image and resize
-        logo_image = Image.open(image_path)
-        logo_image = logo_image.resize((size, size))
-
-        # Create an image with alpha channel (RGBA)
-        circle_image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-
-        # Create a mask to define the shape of the circle
-        mask = Image.new('L', (size, size), 0)
-        draw = ImageDraw.Draw(mask)
-        draw.ellipse((0, 0, size, size), fill=255)
-
-        # Paste the resized image onto the circle image using the mask
-        circle_image.paste(logo_image, (0, 0), mask)
-
-        return ImageTk.PhotoImage(circle_image)
-
-    except FileNotFoundError:
-        messagebox.showerror("Error", f"Logo image not found at {image_path}.")
-        return None
-
-# Muat dan tampilkan gambar dalam bentuk lingkaran
 logo_image = create_circle_image(logo_path, 70)
 
 if logo_image:
     logo_label = tk.Label(frame, image=logo_image)
-    logo_label.image = logo_image  # Simpan referensi agar gambar tetap ditampilkan
+    logo_label.image = logo_image
     logo_label.grid(row=0, column=3, rowspan=2, padx=10, pady=10, sticky='nsew')
 
 label_guest_name = ctk.CTkLabel(frame, text='Guest Name:')
@@ -75,165 +46,93 @@ label_check_in_date.grid(row=2, column=0, sticky=tk.W, pady=5, padx=10)
 entry_check_in_date = DateEntry(frame, width=38, background='darkblue', foreground='white', borderwidth=2)
 entry_check_in_date.grid(row=2, column=1, sticky=tk.W, pady=5, padx=10)
 
-# Frame waktu check-in
 entry_check_in_time = ctk.CTkFrame(frame)
 entry_check_in_time.grid(row=2, column=2, sticky=tk.W, pady=5, padx=10)
 hour_in = tk.Spinbox(entry_check_in_time, from_=0, to=23, width=2, format="%02.0f")
 minute_in = tk.Spinbox(entry_check_in_time, from_=0, to=59, width=2, format="%02.0f")
 second_in = tk.Spinbox(entry_check_in_time, from_=0, to=59, width=2, format="%02.0f")
-hour_in.pack(side='left')
-minute_in.pack(side='left')
-second_in.pack(side='left')
+hour_in.pack(side=tk.LEFT)
+minute_in.pack(side=tk.LEFT)
+second_in.pack(side=tk.LEFT)
 
 label_check_out_date = ctk.CTkLabel(frame, text='Check-out Date:')
 label_check_out_date.grid(row=3, column=0, sticky=tk.W, pady=5, padx=10)
 entry_check_out_date = DateEntry(frame, width=38, background='darkblue', foreground='white', borderwidth=2)
 entry_check_out_date.grid(row=3, column=1, sticky=tk.W, pady=5, padx=10)
 
-# Frame waktu check-out
 entry_check_out_time = ctk.CTkFrame(frame)
 entry_check_out_time.grid(row=3, column=2, sticky=tk.W, pady=5, padx=10)
 hour_out = tk.Spinbox(entry_check_out_time, from_=0, to=23, width=2, format="%02.0f")
 minute_out = tk.Spinbox(entry_check_out_time, from_=0, to=59, width=2, format="%02.0f")
 second_out = tk.Spinbox(entry_check_out_time, from_=0, to=59, width=2, format="%02.0f")
-hour_out.pack(side='left')
-minute_out.pack(side='left')
-second_out.pack(side='left')
+hour_out.pack(side=tk.LEFT)
+minute_out.pack(side=tk.LEFT)
+second_out.pack(side=tk.LEFT)
 
 label_price = ctk.CTkLabel(frame, text='Price:')
 label_price.grid(row=4, column=0, sticky=tk.W, pady=5, padx=10)
 entry_price = ctk.CTkEntry(frame, width=250)
 entry_price.grid(row=4, column=1, sticky=tk.W, pady=5, padx=10, columnspan=2)
 
-# Tambahkan entri pencarian dan tombol di bawah entry_guest_name
-label_search = ctk.CTkLabel(frame, text='Search:')
-label_search.grid(row=5, column=0, sticky=tk.W, pady=5, padx=10)
+button_add = ctk.CTkButton(frame, text='Add Reservation', command=lambda: add_reservation_clicked(cursor, conn, tree, {
+    'guest_name': entry_guest_name,
+    'room_number': entry_room_number,
+    'check_in_date': entry_check_in_date,
+    'hour_in': hour_in,
+    'minute_in': minute_in,
+    'second_in': second_in,
+    'check_out_date': entry_check_out_date,
+    'hour_out': hour_out,
+    'minute_out': minute_out,
+    'second_out': second_out,
+    'price': entry_price
+}))
+button_add.grid(row=5, column=0, pady=10, padx=10)
 
-entry_search = ctk.CTkEntry(frame, width=250)
-entry_search.grid(row=5, column=1, sticky=tk.W, pady=5, padx=10)
+button_delete = ctk.CTkButton(frame, text='Delete Reservation', command=lambda: delete_reservation_clicked(cursor, conn, tree))
+button_delete.grid(row=5, column=1, pady=10, padx=10)
 
-# Tambahkan dropdown untuk memilih jenis pencarian
-search_options = ['Guest Name', 'Room Number']
-search_var = tk.StringVar(value=search_options[0])
-search_dropdown = ctk.CTkOptionMenu(frame, variable=search_var, values=search_options)
-search_dropdown.grid(row=5, column=2, pady=5, padx=10, sticky='ew')
+button_export = ctk.CTkButton(frame, text='Export to CSV', command=lambda: export_csv_clicked(cursor))
+button_export.grid(row=5, column=2, pady=10, padx=10)
 
-button_search = ctk.CTkButton(frame, text='Search', command=lambda: search_reservation())
-button_search.grid(row=5, column=3, pady=10, padx=10, sticky='ew')
+label_search = ctk.CTkLabel(frame, text='Cari Data:')
+label_search.grid(row=6, column=0, sticky=tk.W, pady=5, padx=10)
+entry_search = ctk.CTkEntry(frame, width=200)
+entry_search.grid(row=6, column=1, pady=10, padx=10)
+search_criteria = ctk.CTkComboBox(frame, values=['Guest Name', 'Room Number'], state='readonly')
+search_criteria.grid(row=6, column=2, pady=10, padx=10)
+search_criteria.set('Guest Name')
 
-# Posisikan tombol check-in dan check-out di kiri dan kanan
-button_add = ctk.CTkButton(frame, text='Add Reservation', command=lambda: add_reservation_clicked())
-button_add.grid(row=6, column=0, pady=10, padx=10, sticky='ew', columnspan=2)
+button_search = ctk.CTkButton(frame, text='Search', command=lambda: search_reservation(cursor, tree, entry_search.get(), search_criteria.get()))
+button_search.grid(row=6, column=3, pady=10, padx=10)
 
-button_delete = ctk.CTkButton(frame, text='Delete Reservation', command=lambda: delete_reservation_clicked())
-button_delete.grid(row=6, column=2, pady=10, padx=10, sticky='ew', columnspan=2)
-
-# Tombol untuk ekspor CSV
-button_export = ctk.CTkButton(frame, text='Export CSV', command=lambda: export_csv_clicked())
-button_export.grid(row=7, column=0, columnspan=4, pady=10, padx=10, sticky='ew')
-
-# Gunakan ttk Treeview untuk menampilkan data reservasi
+# Frame untuk treeview dan scrollbar
 tree_frame = ctk.CTkFrame(frame)
-tree_frame.grid(row=8, column=0, columnspan=4, pady=10, padx=10, sticky="nsew")
+tree_frame.grid(row=7, column=0, columnspan=4, pady=20, padx=20, sticky="nsew")
+
+# Scrollbar horizontal
+tree_scroll_x = tk.Scrollbar(tree_frame, orient=tk.HORIZONTAL)
+tree_scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
+
+# Scrollbar vertikal
+tree_scroll_y = tk.Scrollbar(tree_frame, orient=tk.VERTICAL)
+tree_scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
 
 columns = ('ID', 'Guest Name', 'Room Number', 'Check-in Date', 'Check-out Date', 'Price')
-tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=15)
+tree = ttk.Treeview(tree_frame, columns=columns, show='headings', xscrollcommand=tree_scroll_x.set, yscrollcommand=tree_scroll_y.set)
+
+for col in columns:
+    tree.heading(col, text=col)
+    tree.column(col, width=150, anchor='center')
+
 tree.pack(fill="both", expand=True)
 
-tree.heading('ID', text='ID')
-tree.heading('Guest Name', text='Guest Name')
-tree.heading('Room Number', text='Room Number')
-tree.heading('Check-in Date', text='Check-in Date')
-tree.heading('Check-out Date', text='Check-out Date')
-tree.heading('Price', text='Price')
+# Konfigurasi scrollbar
+tree_scroll_x.config(command=tree.xview)
+tree_scroll_y.config(command=tree.yview)
 
-tree.column('ID', width=50, anchor='center')
-tree.column('Guest Name', width=150, anchor='center')
-tree.column('Room Number', width=100, anchor='center')
-tree.column('Check-in Date', width=150, anchor='center')
-tree.column('Check-out Date', width=150, anchor='center')
-tree.column('Price', width=100, anchor='center')
+display_reservations(cursor, tree)
 
-# Fungsi untuk menampilkan data reservasi saat aplikasi dimulai
-def display_reservations():
-    for i in tree.get_children():
-        tree.delete(i)
-    cursor.execute('SELECT * FROM reservations')
-    rows = cursor.fetchall()
-    for row in rows:
-        tree.insert('', tk.END, values=row)
-
-# Fungsi untuk menangani klik tombol "Add Reservation"
-def add_reservation_clicked():
-    guest_name = entry_guest_name.get()
-    room_number = entry_room_number.get()
-    check_in_date = entry_check_in_date.get()
-    check_in_time = f"{hour_in.get()}:{minute_in.get()}:{second_in.get()}"
-    check_out_date = entry_check_out_date.get()
-    check_out_time = f"{hour_out.get()}:{minute_out.get()}:{second_out.get()}"
-    price = entry_price.get()
-
-    # Validasi input (contoh sederhana, sesuaikan dengan kebutuhan Anda)
-    if guest_name and room_number and check_in_date and check_in_time and check_out_date and check_out_time and price:
-        full_check_in_date = f"{check_in_date} {check_in_time}"
-        full_check_out_date = f"{check_out_date} {check_out_time}"
-        if add_reservation(cursor, conn, guest_name, room_number, full_check_in_date, full_check_out_date, price):
-            display_reservations()
-            # Bersihkan input setelah reservasi ditambahkan
-            entry_guest_name.delete(0, tk.END)
-            entry_room_number.delete(0, tk.END)
-            entry_check_in_date.set_date('')
-            hour_in.delete(0, tk.END)
-            minute_in.delete(0, tk.END)
-            second_in.delete(0, tk.END)
-            entry_check_out_date.set_date('')
-            hour_out.delete(0, tk.END)
-            minute_out.delete(0, tk.END)
-            second_out.delete(0, tk.END)
-            entry_price.delete(0, tk.END)
-        else:
-            messagebox.showerror("Error", "Failed to add reservation.")
-    else:
-        messagebox.showerror("Error", "All fields are required.")
-
-# Fungsi untuk menangani klik tombol "Delete Reservation"
-def delete_reservation_clicked():
-    selected_item = tree.selection()
-    if selected_item:
-        reservation_id = tree.item(selected_item)['values'][0]
-        if delete_reservation(cursor, conn, reservation_id):
-            display_reservations()
-        else:
-            messagebox.showerror("Error", "Failed to delete reservation.")
-    else:
-        messagebox.showerror("Error", "No reservation selected.")
-
-# Fungsi untuk menangani klik tombol "Export CSV"
-def export_csv_clicked():
-    file_path = os.path.join(os.getcwd(), 'reservation.csv')
-    if export_csv(cursor, file_path):
-        messagebox.showinfo("Success", f"Data exported to {file_path} successfully.")
-    # else:
-    #     messagebox.showerror("Error", "Failed to export data to CSV.")
-
-# Fungsi untuk menangani pencarian reservasi
-def search_reservation():
-    search_term = entry_search.get()
-    search_type = search_var.get()
-    
-    query = f"SELECT * FROM reservations WHERE {search_type.lower().replace(' ', '_')} LIKE ?"
-    cursor.execute(query, ('%' + search_term + '%',))
-    rows = cursor.fetchall()
-    
-    for i in tree.get_children():
-        tree.delete(i)
-    for row in rows:
-        tree.insert('', tk.END, values=row)
-
-# Tampilkan data reservasi saat aplikasi dimulai
-display_reservations()
-
-# Tutup koneksi database saat aplikasi ditutup
 def on_closing():
     close_database(conn)
     root.destroy()
